@@ -13,9 +13,10 @@ intents.members = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 
 app = Flask(__name__)
+
 @app.route('/')
 def home():
-    return "BSF Discord BOT is Running!"
+    return "BSF Discord BOT is Running! 🟢"
 
 @bot.event
 async def on_ready():
@@ -29,13 +30,12 @@ async def ping(ctx):
 async def on_message(message):
     if message.author.bot:
         return
-    await message.channel.send(f"وصل: {message.content}")
     await bot.process_commands(message)
 
-def run_bot():
-    bot.run(TOKEN)
+def run_flask():
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host='0.0.0.0', port=port)
 
 if __name__ == "__main__":
-    threading.Thread(target=run_bot).start()
-    port = int(os.environ.get("PORT", 8000))
-    app.run(host="0.0.0.0", port=port)
+    threading.Thread(target=run_flask).start()
+    bot.run(TOKEN)
