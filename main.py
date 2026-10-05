@@ -131,7 +131,9 @@ async def moshi_pro(ctx):
 async def ajib_pro(ctx):
     await ctx.send(embed=discord.Embed(title="🐯 عجيب", description="🌯 + 🔫 = BSF STYLE", color=RED_FIRE))
 if __name__ == "__main__":
-    threading.Thread(target=run_flask, daemon=True).start()
+    t = threading.Thread(target=run_flask)
+    t.daemon = True
+    t.start()
     token = os.environ.get("DISCORD_TOKEN")
     if not token:
         token = os.environ.get("TOKEN")
