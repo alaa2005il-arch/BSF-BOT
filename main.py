@@ -16,26 +16,20 @@ app = Flask(__name__)
 
 @app.route('/')
 def home():
-    return "BSF Discord BOT is Running! 🟢"
+    return "BSF Discord BOT is Running! ♾️🔥"
 
 @bot.event
 async def on_ready():
-    print(f"شغال: {bot.user}")
+    print(f"BSF شغال: {bot.user} ♾️")
 
 @bot.command()
 async def ping(ctx):
     await ctx.send("بوت BSF شغال! 🔥")
 
+@bot.command()
+async def bsf(ctx):
+    await ctx.send("**BSF ♾️ - الهيبة مش بالكلام، الهيبة BSF** 🦁🐯👻")
+
 @bot.event
 async def on_message(message):
-    if message.author.bot:
-        return
-    await bot.process_commands(message)
-
-def run_flask():
-    port = int(os.environ.get("PORT", 10000))
-    app.run(host='0.0.0.0', port=port)
-
-if __name__ == "__main__":
-    threading.Thread(target=run_flask).start()
-    bot.run(TOKEN)
+    if message.author
