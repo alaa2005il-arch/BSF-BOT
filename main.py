@@ -1,29 +1,41 @@
 import os
+import discord
+from discord.ext import commands
 import threading
 from flask import Flask
-import telebot
 
-BOT_TOKEN = os.environ.get("BOT_TOKEN", "")
-bot = telebot.TeleBot(BOT_TOKEN)
+TOKEN = os.environ.get("TOKEN")
+
+intents = discord.Intents.default()
+intents.message_content = True
+intents.members = True
+
+bot = commands.Bot(command_prefix="!", intents=intents)
+
 app = Flask(__name__)
-
 @app.route('/')
 def home():
-    return "BSF-BOT is Running! ♾️ by Alaa"
+    return "BSF Discord BOT is Running!"
 
-@bot.message_handler(commands=['start'])
-def start(m):
-    bot.reply_to(m, "أهلا يا علاء! البوت شغال ♾️🔥\nاكتب أي شي")
+@bot.event
+async def on_ready():
+    print(f"شغال: {bot.user}")
 
-@bot.message_handler(func=lambda m: True)
-def echo(m):
-    bot.reply_to(m, f"وصل: {m.text}")
+@bot.command()
+async def ping(ctx):
+    await ctx.send("بوت BSF شغال! 🔥")
+
+@bot.event
+async def on_message(message):
+    if message.author.bot:
+        return
+    await message.channel.send(f"وصل: {message.content}")
+    await bot.process_commands(message)
 
 def run_bot():
-    bot.infinity_polling()
-
-threading.Thread(target=run_bot).start()
+    bot.run(TOKEN)
 
 if __name__ == "__main__":
+    threading.Thread(target=run_bot).start()
     port = int(os.environ.get("PORT", 8000))
     app.run(host="0.0.0.0", port=port)
