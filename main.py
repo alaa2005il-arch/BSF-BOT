@@ -17,8 +17,7 @@ def run_flask():
     app.run(host="0.0.0.0", port=port)
 
 intents = discord.Intents.all()
-bot = commands.Bot(command_prefix='+',
-
+bot = commands.Bot(command_prefix='+', intents=intents)
 GOLD = 0xFFD700
 BLACK = 0x0A0A0A
 CYAN = 0x00FFFF
