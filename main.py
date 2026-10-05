@@ -132,10 +132,12 @@ async def ajib_pro(ctx):
     await ctx.send(embed=discord.Embed(title="🐯 عجيب", description="🌯 + 🔫 = BSF STYLE", color=RED_FIRE))
 if __name__ == "__main__":
     threading.Thread(target=run_flask, daemon=True).start()
-    token = os.environ.get("DISCORD_TOKEN") or os.environ.get("TOKEN")
+    token = os.environ.get("DISCORD_TOKEN")
+    if not token:
+        token = os.environ.get("TOKEN")
     print(f"TOKEN EXISTS: {bool(token)}")
     if not token:
-        print("NO TOKEN! Check Render Environment")
+        print("NO TOKEN FOUND!")
         import time
         while True:
             time.sleep(60)
