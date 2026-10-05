@@ -130,8 +130,14 @@ async def moshi_pro(ctx):
 @bot.command(name='عجيب')
 async def ajib_pro(ctx):
     await ctx.send(embed=discord.Embed(title="🐯 عجيب", description="🌯 + 🔫 = BSF STYLE", color=RED_FIRE))
-
 if __name__ == "__main__":
-    threading.Thread(target=run_flask).start()
+    threading.Thread(target=run_flask, daemon=True).start()
     token = os.environ.get("DISCORD_TOKEN") or os.environ.get("TOKEN")
+    print(f"TOKEN EXISTS: {bool(token)}")
+    if not token:
+        print("NO TOKEN! Check Render Environment")
+        import time
+        while True:
+            time.sleep(60)
+    print("Starting bot...")
     bot.run(token)
