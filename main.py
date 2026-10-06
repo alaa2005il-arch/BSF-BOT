@@ -6,7 +6,25 @@ import discord
 from discord.ext import commands
 from discord.ui import View, Button
 from PIL import Image, ImageDraw, ImageFont
+from flask import Flask
+from threading import Thread
 
+# ========== Keep Alive (عشان Render ما يطفيه) ==========
+app = Flask('')
+
+@app.route('/')
+def home():
+    return "BSF-BOT is Online! ♾️🔥"
+
+def run():
+  app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 10000)))
+
+def keep_alive():
+  t = Thread(target=run)
+  t.daemon = True
+  t.start()
+
+# ========== اعداد البوت ==========
 intents = discord.Intents.default()
 intents.message_content = True
 intents.members = True
@@ -135,87 +153,26 @@ class BSFView(View):
 @bot.event
 async def on_ready():
     print(f'{bot.user} - BSF ULTIMATE شغال!')
-    # اصلاح: لازم بدون باراميترات عشان الازرار الدائمة
     bot.add_view(BSFView())
     bot.add_view(ColorPickerView())
     bot.add_view(FrameDownloadView())
     await bot.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name="BSF CLAN ♾️ |!bsf"))
 
 @bot.event
-async def on_member_join(member):
-    channel = discord.utils.get(member.guild.text_channels, name="ترحيب") or member.guild.system_channel
-    if not channel: return
-    embed = discord.Embed(title=f"👑 أهلا {member.display_name} في BSF ♾️", description=f"نورت الكلان!\n{random.choice(BSF_QUOTES)}", color=GOLD)
-    embed.set_thumbnail(url=member.display_avatar.url)
-    try:
-        await channel.send(embed=embed, view=BSFView())
-    except: pass
-
-@bot.event
 async def on_message(message):
-    if message.author.bot: return
-    levels = load_levels()
+    if message.author.bot:
+        return
+    # نظام ليفلات بسيط
+    data = load_levels()
     uid = str(message.author.id)
-    if uid not in levels: levels[uid] = {"xp": 0, "level": 1}
-    levels[uid]["xp"] += random.randint(5, 15)
-    if levels[uid]["xp"] > levels[uid]["level"] * 100:
-        levels[uid]["level"] += 1
-        levels[uid]["xp"] = 0
-        embed = discord.Embed(title="🎉 LEVEL UP! ♾️", description=f"{message.author.mention} وصل **لفل {levels[uid]['level']}**!", color=CYAN)
-        await message.channel.send(embed=embed)
-    save_levels(levels)
+    if uid not in data:
+        data[uid] = {"xp": 0, "level": 0}
+    data[uid]["xp"] += 5
+    if data[uid]["xp"] >= (data[uid]["level"]+1)*100:
+        data[uid]["level"] += 1
+        await message.channel.send(f"🔥 {message.author.mention} وصل ليفل **{data[uid]['level']}** في BSF ♾️!")
+    save_levels(data)
     await bot.process_commands(message)
 
-@bot.command(name='bsf')
-async def bsf_ultimate(ctx):
-    embed = discord.Embed(title="🦁 BSF ULTIMATE PANEL ♾️", description="**TWO BROTHERS BROTHERHOOD**\n```ansi\n\u001b[2;33m♾️ BSF = هيبة لا تنتهي ♾️\u001b[0m\n```", color=GOLD)
-    embed.add_field(name="🔥 الأوامر", value="`!اعضاء` `!فريم` `!لفل` `!توب` `!اقتباس`", inline=False)
-    await ctx.send(embed=embed, view=BSFView())
-
-@bot.command(name='فريم')
-async def frame_pro(ctx, *, name="عجيب"):
-    embed = discord.Embed(title=f"🎨 FRAME: {name} ♾️", description=f"**Style:** Black 960x540 | Gold border\n**Status:** ✅ جاهز للتحميل الحقيقي", color=GOLD)
-    await ctx.send(embed=embed, view=FrameDownloadView(target_name=name))
-
-@bot.command(name='اعضاء')
-async def members_pro(ctx):
-    embed = discord.Embed(title="👑 مجلس BSF الأعلى ♾️", color=BLACK)
-    members = [("🦁 أبو عيسى", "الزعيم"), ("🐯 عجيب", "المجنون 🌯"), ("👻 الغامض", "المؤسس"), ("🤓 موشي", "العبقري"), ("💤 موسى", "النايم"), ("♾️ MUSA", "اللامنتهي")]
-    for n, d in members: embed.add_field(name=n, value=d, inline=True)
-    await ctx.send(embed=embed)
-
-@bot.command(name='لفل')
-async def level_pro(ctx, member: discord.Member = None):
-    member = member or ctx.author
-    data = load_levels().get(str(member.id), {"xp": 0, "level": 1})
-    need = data["level"] * 100
-    bar = "█" * int(data["xp"]/need*10) + "░" * (10 - int(data["xp"]/need*10))
-    embed = discord.Embed(title=f"📊 BSF CARD - {member.display_name} ♾️", color=CYAN)
-    embed.set_thumbnail(url=member.display_avatar.url)
-    embed.add_field(name="Level", value=f"**{data['level']}** 👑", inline=True)
-    embed.add_field(name="XP", value=f"{data['xp']}/{need}", inline=True)
-    embed.add_field(name="Progress", value=f"`{bar}`", inline=False)
-    await ctx.send(embed=embed)
-
-@bot.command(name='توب')
-async def leaderboard(ctx):
-    levels = load_levels()
-    sorted_levels = sorted(levels.items(), key=lambda x: (x[1]['level'], x[1]['xp']), reverse=True)[:10]
-    text = ""
-    for i, (uid, data) in enumerate(sorted_levels, 1):
-        try: name = (await bot.fetch_user(int(uid))).display_name
-        except: name = f"User {uid[:4]}"
-        text += f"**{i}.** {name} - لفل {data['level']}\n"
-    embed = discord.Embed(title="🏆 توب BSF ♾️", description=text or "لسا ما حد كتب", color=GOLD)
-    await ctx.send(embed=embed)
-
-@bot.command(name='اقتباس')
-async def quote(ctx):
-    embed = discord.Embed(description=f"**\"{random.choice(BSF_QUOTES)}\"**", color=GOLD)
-    await ctx.send(embed=embed)
-
-TOKEN = os.getenv('TOKEN')
-if not TOKEN:
-    print("❌ ما لقيت TOKEN")
-else:
-    bot.run(TOKEN)
+@bot.command(name="bsf")
+async def bsf_cmd(ctx, *, name="عجيب"):
