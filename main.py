@@ -1,51 +1,43 @@
-import os, json, random, io
 import discord
 from discord.ext import commands
 from discord.ui import View, Button
-from PIL import Image, ImageDraw, ImageFont
-from flask import Flask
-from threading import Thread
-
-app = Flask('')
-@app.route('/')
-def home():
-    return "BSF-BOT is Online!"
-def run():
-    app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 10000)))
-def keep_alive():
-    Thread(target=run, daemon=True).start()
+import random
 
 intents = discord.Intents.default()
 intents.message_content = True
 intents.members = True
-bot = commands.Bot(command_prefix='!', intents=intents, help_command=None)
-GOLD = 0xFFD700
+bot = commands.Bot(command_prefix='!', intents=intents)
 
-def create_bsf_frame(name="BSF", color_hex="#FFD700"):
-    W, H = 960, 540
-    img = Image.new("RGB", (W, H), "#0a0a0a")
-    draw = ImageDraw.Draw(img)
-    draw.rectangle([8, 8, W-8, H-8], outline=color_hex, width=6)
-    font_big = ImageFont.load_default()
-    draw.text((W//2, H//2), f"BSF {name} {color_hex}", font=font_big, fill="white", anchor="mm")
-    buffer = io.BytesIO()
-    img.save(buffer, format="PNG")
-    buffer.seek(0)
-    return buffer
+# --- نظام الأزرار ---
+class ChallengeView(View):
+    def __init__(self):
+        super().__init__(timeout=None)
+    
+    @discord.ui.button(label="⚔️ تحداني", style=discord.ButtonStyle.primary, emoji="⚡")
+    async def challenge_btn(self, interaction: discord.Interaction, button: Button):
+        power = random.choice([800, 1000, 1200, 1500, 2000])
+        if power >= 1500:
+            msg = f"💥 يا ساتر {interaction.user.mention} طلعلك **{power}% POWER** - هزمت عجيب السمين! صرت ملك اليوم 👑"
+        else:
+            msg = f"😂 {interaction.user.mention} قوتك **{power}%** - عجيب السمين ضحك عليك! جرب مرة تانية"
+        await interaction.response.send_message(msg)
 
 @bot.event
 async def on_ready():
-    print(f'{bot.user} ONLINE!')
-    await bot.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name="BSF CLAN"))
+    await bot.tree.sync()
+    print(f'BSF KINGDOM - عجيب السمين ONLINE: {bot.user}')
 
-@bot.command(name="bsf")
-async def bsf_cmd(ctx, *, name="Ajeeb"):
-    buffer = create_bsf_frame(name, "#FFD700")
-    await ctx.send(file=discord.File(buffer, f"BSF_{name}.png"))
+# --- الأوامر ---
 
-@bot.command(name="ping")
-async def ping(ctx):
-    await ctx.send(f"Pong! {round(bot.latency*1000)}ms BSF ONLINE!")
-
-keep_alive()
-bot.run(os.getenv("TOKEN"))
+@bot.tree.command(name="عجيب", description="قصة عجيب السمين - بطل BSF KINGDOM")
+async def ajeeb(interaction: discord.Interaction):
+    file = discord.File("ajeeb.png", filename="ajeeb.png") # حط صورة عجيب جنب الملف
+    embed = discord.Embed(
+        title="🪔 عجيب السمين - بطل BSF KINGDOM",
+        description="**كان يا ما كان في أريحا...**\nشاب اسمه **عجيب السمين** لقى فانوس تحت كرسي الحلاقة 💈\nمسحو وطلع برق أزرق **1000% POWER** ⚡\nقال الجني: شبيك لبيك\nقال عجيب: بدي مملكة!\nومن يومها صار أسطورة المملكة 👑",
+        color=0x0018A8
+    )
+    embed.set_thumbnail(url="attachment://ajeeb.png")
+    embed.add_field(name="✂️ السلاح", value="المقص الذهبي", inline=True)
+    embed.add_field(name="⚡ القوة", value="1000% POWER", inline=True)
+    embed.add_field(name="🏰 اللقب", value="KING OF LIGHT
