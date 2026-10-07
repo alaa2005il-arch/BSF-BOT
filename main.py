@@ -1,89 +1,120 @@
 import discord
-from discord.ext import commands
+from discord.ext import commands, tasks
 from discord.ui import View, Button
-import random
-import os
+import random, os, json
+from datetime import datetime, timedelta
 from flask import Flask
 from threading import Thread
 
-# --- كود الـ Render عشان ما يطفي (هاد اللي انمسح بالصورة) ---
 app = Flask('')
 @app.route('/')
-def home():
-    return "BSF-BOT is Online! BSF KINGDOM 1000% POWER"
+def home(): return "BSF - نظام الشعر شغال!"
+def run(): app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 10000)))
+def keep_alive(): Thread(target=run).start()
 
-def run():
-    app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 10000)))
-
-def keep_alive():
-    t = Thread(target=run)
-    t.start()
-
-# --- اعدادات البوت ---
 intents = discord.Intents.default()
 intents.message_content = True
 intents.members = True
 bot = commands.Bot(command_prefix='!', intents=intents)
 
-# --- زر التحدي ---
-class ChallengeView(View):
-    def __init__(self):
-        super().__init__(timeout=None)
+# --- نظام الشعر ---
+HAIR_FILE = "hair.json"
+
+def load_hair():
+    if os.path.exists(HAIR_FILE):
+        try:
+            with open(HAIR_FILE, "r") as f: return json.load(f)
+        except: return {}
+    return {}
+
+def save_hair(data):
+    with open(HAIR_FILE, "w") as f: json.dump(data, f)
+
+hair_data = load_hair()
+
+def get_length(user_id):
+    user_id = str(user_id)
+    if user_id not in hair_data:
+        hair_data[user_id] = {"last_cut": datetime.now().isoformat(), "total_cuts": 0}
+        save_hair(hair_data)
+        return 0
     
+    last = datetime.fromisoformat(hair_data[user_id]["last_cut"])
+    diff = datetime.now() - last
+    # كل ساعة 1 سم بيطول
+    cm = int(diff.total_seconds() / 3600)  # ساعة = 1 سم
+    return min(cm, 50) # اقصى طول 50 سم
+
+class AjeebView(View):
+    def __init__(self): super().__init__(timeout=None)
     @discord.ui.button(label="⚔️ تحداني", style=discord.ButtonStyle.primary, emoji="⚡")
-    async def challenge_btn(self, interaction: discord.Interaction, button: Button):
-        power = random.choice([800, 1000, 1200, 1500, 2000])
-        if power >= 1500:
-            msg = f"💥 يا ساتر {interaction.user.mention} طلعلك **{power}% POWER** - هزمت عجيب السمين! 👑"
-        else:
-            msg = f"😂 {interaction.user.mention} قوتك **{power}%** - عجيب السمين ضحك عليك!"
-        await interaction.response.send_message(msg)
+    async def btn1(self, interaction: discord.Interaction, button: Button):
+        await interaction.response.send_message(f'⚡ {interaction.user.mention} قوتك {random.choice([800,1000,2000])}%')
 
 @bot.event
 async def on_ready():
     await bot.tree.sync()
-    print(f'BSF KINGDOM ONLINE: {bot.user}')
+    print(f'ONLINE: {bot.user}')
 
-# --- الأوامر اللي عملناها امبارح ---
-@bot.tree.command(name="عجيب", description="قصة عجيب السمين - بطل BSF KINGDOM")
-async def ajeeb(interaction: discord.Interaction):
-    embed = discord.Embed(
-        title="🪔 عجيب السمين - بطل BSF KINGDOM",
-        description=(
-            "**كان يا ما كان في أريحا...**\n"
-            "شاب اسمه **عجيب السمين** لقى فانوس سحري تحت كرسي الحلاقة 💈\n\n"
-            "مسحو وطلع برق أزرق **1000% POWER** ⚡\n"
-            "قال الجني: شبيك لبيك\n"
-            "قال عجيب: بدي مملكة!\n\n"
-            "ومن يومها صار أسطورة المملكة 👑💥"
-        ),
-        color=0x0018A8
-    )
-    embed.add_field(name="✂️ السلاح", value="المقص الذهبي", inline=True)
-    embed.add_field(name="⚡ القوة", value="1000% POWER", inline=True)
-    embed.add_field(name="🏰 اللقب", value="KING OF LIGHTNING", inline=True)
-    embed.set_footer(text="اضغط تحداني وشوف اذا بتقدر تهزمو!")
+# --- أمر شعري ---
+@bot.tree.command(name="شعري", description="شوف طول شعرك الحالي 💇‍♂️")
+async def my_hair(interaction: discord.Interaction):
+    length = get_length(interaction.user.id)
     
-    try:
-        file = discord.File("ajeeb.png", filename="ajeeb.png")
-        embed.set_thumbnail(url="attachment://ajeeb.png")
-        await interaction.response.send_message(file=file, embed=embed, view=ChallengeView())
-    except:
-        await interaction.response.send_message(embed=embed, view=ChallengeView())
+    if length == 0:
+        status = "قرعة بتلمع 🪔✨ نظيف!"
+        emoji = "😎"
+    elif length < 5:
+        status = "خفيف ومرتب 😌"
+        emoji = "💈"
+    elif length < 10:
+        status = "بدأ يطول، لازم حلاقة قريب ✂️"
+        emoji = "😬"
+    elif length < 20:
+        status = "شعرك طويل! صرت زي شجرة نخيل أريحا 🌴😂"
+        emoji = "🦁"
+    else:
+        status = "يا ساتر! شعرك 50 سم! عجيب بطردك من الصالون 😂🔥"
+        emoji = "🧟‍♂️"
 
-@bot.tree.command(name="قوة", description="شوف قوتك اليوم")
-async def power_cmd(interaction: discord.Interaction):
-    await interaction.response.send_message(f'⚡ {interaction.user.mention} قوتك: **{random.choice([800,1000,1500,2000])}% POWER**')
+    embed = discord.Embed(title=f"{emoji} طول شعرك: {length} سم", description=f"**الحالة:** {status}", color=0xFFD700)
+    embed.add_field(name="📏 الطول", value=f"{length} سم", inline=True)
+    embed.add_field(name="✂️ حلاقاتك", value=f"{hair_data[str(interaction.user.id)]['total_cuts']}", inline=True)
+    
+    if length >= 10:
+        embed.add_field(name="⚠️", value="لازم تحلق! استخدم `/حلاقة`", inline=False)
+    
+    await interaction.response.send_message(embed=embed)
 
-@bot.tree.command(name="موسى", description="MUSA JUICE")
-async def musa_cmd(interaction: discord.Interaction):
-    await interaction.response.send_message('🧴 ION TONIC MUSA JUICE - 1000% POWER - FUELED BY BSF KINGDOM')
+# --- أمر حلاقة مطور ---
+@bot.tree.command(name="حلاقة", description="احلق لحدا - بقص شعرو كلو 💈")
+async def halaka(interaction: discord.Interaction, عضو: discord.Member):
+    user_id = str(عضو.id)
+    length = get_length(عضو.id)
+    
+    if length == 0:
+        await interaction.response.send_message(f'😂 {عضو.mention} أصلع أصلا! شو بدك تحلق؟ {interaction.user.mention} بضحك عليك 💈')
+        return
 
-@bot.tree.command(name="تحدي", description="تحدي عشوائي من عجيب")
-async def tahadi_cmd(interaction: discord.Interaction):
-    q = random.choice(["شو لون برق الفانوس؟ أزرق", "وين لقى عجيب الفانوس؟ تحت الكرسي", "كم مقص بالشعار؟ 2"])
-    await interaction.response.send_message(f'🔥 **تحدي عجيب:** {q}')
+    قصات = ["قرعة 1000% POWER 🔥", "سوالف برق ⚡", "قصة الملوك 👑", "على الصفر ✨"]
+    قصة = random.choice(قصات)
 
-# --- التشغيل النهائي ---
-keep_alive()
-bot.run(os.getenv("DISCORD_TOKEN"))
+    # قص الشعر
+    if user_id not in hair_data: hair_data[user_id] = {"last_cut": "", "total_cuts": 0}
+    hair_data[user_id]["last_cut"] = datetime.now().isoformat()
+    hair_data[user_id]["total_cuts"] = hair_data[user_id].get("total_cuts", 0) + 1
+    save_hair(hair_data)
+
+    embed = discord.Embed(
+        title="💈 تمت الحلاقة بنجاح!",
+        description=f"**الحلاق:** عجيب السمين 🪔\n**الزبون:** {عضو.mention}\n**كان طولو:** {length} سم\n**القصة الجديدة:** {قصة}",
+        color=0x00FF00
+    )
+    embed.set_footer(text=f"حلاقة رقم {hair_data[user_id]['total_cuts']} • BSF KINGDOM")
+    await interaction.response.send_message(embed=embed)
+
+# --- ترتيب أطول شعر ---
+@bot.tree.command(name="مقملين", description="مين أطول شعر في السيرفر 😂")
+async def longest(interaction: discord.Interaction):
+    if not hair_data:
+        await interaction.response.send_message("لسا
