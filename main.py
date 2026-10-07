@@ -1,14 +1,14 @@
 import discord
-from discord.ext import commands, tasks
+from discord.ext import commands
 from discord.ui import View, Button
 import random, os, json
-from datetime import datetime, timedelta
+from datetime import datetime
 from flask import Flask
 from threading import Thread
 
 app = Flask('')
 @app.route('/')
-def home(): return "BSF - نظام الشعر شغال!"
+def home(): return "BSF BOT ONLINE"
 def run(): app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 10000)))
 def keep_alive(): Thread(target=run).start()
 
@@ -17,7 +17,6 @@ intents.message_content = True
 intents.members = True
 bot = commands.Bot(command_prefix='!', intents=intents)
 
-# --- نظام الشعر ---
 HAIR_FILE = "hair.json"
 
 def load_hair():
@@ -33,88 +32,79 @@ def save_hair(data):
 hair_data = load_hair()
 
 def get_length(user_id):
-    user_id = str(user_id)
-    if user_id not in hair_data:
-        hair_data[user_id] = {"last_cut": datetime.now().isoformat(), "total_cuts": 0}
+    uid = str(user_id)
+    if uid not in hair_data:
+        hair_data[uid] = {"last_cut": datetime.now().isoformat(), "total_cuts": 0}
         save_hair(hair_data)
         return 0
-    
-    last = datetime.fromisoformat(hair_data[user_id]["last_cut"])
+    last = datetime.fromisoformat(hair_data[uid]["last_cut"])
     diff = datetime.now() - last
-    # كل ساعة 1 سم بيطول
-    cm = int(diff.total_seconds() / 3600)  # ساعة = 1 سم
-    return min(cm, 50) # اقصى طول 50 سم
+    cm = int(diff.total_seconds() / 3600)
+    return min(cm, 50)
 
 class AjeebView(View):
     def __init__(self): super().__init__(timeout=None)
-    @discord.ui.button(label="⚔️ تحداني", style=discord.ButtonStyle.primary, emoji="⚡")
+    @discord.ui.button(label="Challenge", style=discord.ButtonStyle.primary, emoji="⚡")
     async def btn1(self, interaction: discord.Interaction, button: Button):
-        await interaction.response.send_message(f'⚡ {interaction.user.mention} قوتك {random.choice([800,1000,2000])}%')
+        p = random.choice([800,1000,2000])
+        await interaction.response.send_message(f"Power: {p}% for {interaction.user.mention}")
 
 @bot.event
 async def on_ready():
     await bot.tree.sync()
     print(f'ONLINE: {bot.user}')
 
-# --- أمر شعري ---
-@bot.tree.command(name="شعري", description="شوف طول شعرك الحالي 💇‍♂️")
+@bot.tree.command(name="sh3ri", description="Check your hair length")
 async def my_hair(interaction: discord.Interaction):
     length = get_length(interaction.user.id)
-    
-    if length == 0:
-        status = "قرعة بتلمع 🪔✨ نظيف!"
-        emoji = "😎"
-    elif length < 5:
-        status = "خفيف ومرتب 😌"
-        emoji = "💈"
-    elif length < 10:
-        status = "بدأ يطول، لازم حلاقة قريب ✂️"
-        emoji = "😬"
-    elif length < 20:
-        status = "شعرك طويل! صرت زي شجرة نخيل أريحا 🌴😂"
-        emoji = "🦁"
-    else:
-        status = "يا ساتر! شعرك 50 سم! عجيب بطردك من الصالون 😂🔥"
-        emoji = "🧟‍♂️"
-
-    embed = discord.Embed(title=f"{emoji} طول شعرك: {length} سم", description=f"**الحالة:** {status}", color=0xFFD700)
-    embed.add_field(name="📏 الطول", value=f"{length} سم", inline=True)
-    embed.add_field(name="✂️ حلاقاتك", value=f"{hair_data[str(interaction.user.id)]['total_cuts']}", inline=True)
-    
+    if length == 0: status = "Bald shiny!"
+    elif length < 5: status = "Nice and short"
+    elif length < 10: status = "Needs cut soon"
+    elif length < 20: status = "Long like palm tree!"
+    else: status = "50cm! Go to barber!"
+    embed = discord.Embed(title=f"Hair: {length} cm", description=status, color=0xFFD700)
+    embed.add_field(name="Length", value=f"{length} cm", inline=True)
+    embed.add_field(name="Cuts", value=str(hair_data[str(interaction.user.id)]["total_cuts"]), inline=True)
     if length >= 10:
-        embed.add_field(name="⚠️", value="لازم تحلق! استخدم `/حلاقة`", inline=False)
-    
+        embed.add_field(name="Warning", value="Use /halaka", inline=False)
     await interaction.response.send_message(embed=embed)
 
-# --- أمر حلاقة مطور ---
-@bot.tree.command(name="حلاقة", description="احلق لحدا - بقص شعرو كلو 💈")
-async def halaka(interaction: discord.Interaction, عضو: discord.Member):
-    user_id = str(عضو.id)
-    length = get_length(عضو.id)
-    
+@bot.tree.command(name="halaka", description="Cut someone hair")
+async def halaka(interaction: discord.Interaction, member: discord.Member):
+    uid = str(member.id)
+    length = get_length(member.id)
     if length == 0:
-        await interaction.response.send_message(f'😂 {عضو.mention} أصلع أصلا! شو بدك تحلق؟ {interaction.user.mention} بضحك عليك 💈')
+        await interaction.response.send_message(f"{member.mention} already bald!")
         return
-
-    قصات = ["قرعة 1000% POWER 🔥", "سوالف برق ⚡", "قصة الملوك 👑", "على الصفر ✨"]
-    قصة = random.choice(قصات)
-
-    # قص الشعر
-    if user_id not in hair_data: hair_data[user_id] = {"last_cut": "", "total_cuts": 0}
-    hair_data[user_id]["last_cut"] = datetime.now().isoformat()
-    hair_data[user_id]["total_cuts"] = hair_data[user_id].get("total_cuts", 0) + 1
+    styles = ["1000% POWER", "Lightning sides", "King style", "Zero with shine"]
+    style = random.choice(styles)
+    if uid not in hair_data: hair_data[uid] = {"last_cut": "", "total_cuts": 0}
+    hair_data[uid]["last_cut"] = datetime.now().isoformat()
+    hair_data[uid]["total_cuts"] = hair_data[uid].get("total_cuts", 0) + 1
     save_hair(hair_data)
-
-    embed = discord.Embed(
-        title="💈 تمت الحلاقة بنجاح!",
-        description=f"**الحلاق:** عجيب السمين 🪔\n**الزبون:** {عضو.mention}\n**كان طولو:** {length} سم\n**القصة الجديدة:** {قصة}",
-        color=0x00FF00
-    )
-    embed.set_footer(text=f"حلاقة رقم {hair_data[user_id]['total_cuts']} • BSF KINGDOM")
+    embed = discord.Embed(title="Haircut Done!", description=f"Barber: Ajeeb\nCustomer: {member.mention}\nWas: {length} cm\nNew: {style}", color=0x00FF00)
     await interaction.response.send_message(embed=embed)
 
-# --- ترتيب أطول شعر ---
-@bot.tree.command(name="مقملين", description="مين أطول شعر في السيرفر 😂")
+@bot.tree.command(name="mqamleen", description="Longest hair ranking")
 async def longest(interaction: discord.Interaction):
     if not hair_data:
-        await interaction.response.send_message("لسا
+        await interaction.response.send_message("No hair data yet")
+        return
+    sorted_hair = sorted([(uid, get_length(uid)) for uid in hair_data], key=lambda x: x[1], reverse=True)[:5]
+    text = ""
+    for i, (uid, length) in enumerate(sorted_hair):
+        try:
+            member = await bot.fetch_user(int(uid))
+            name = member.display_name
+        except: name = f"User {uid[:4]}"
+        text += f"{i+1}. {name} - {length} cm\n"
+    embed = discord.Embed(title="Longest Hair Ranking", description=text, color=0xFF0000)
+    await interaction.response.send_message(embed=embed)
+
+@bot.tree.command(name="ajeeb", description="BSF hero")
+async def ajeeb(interaction: discord.Interaction):
+    embed = discord.Embed(title="Ajeeb Al-Sameen - 1000% POWER", description="Hero of Jericho found lamp under barber chair", color=0x0018A8)
+    await interaction.response.send_message(embed=embed, view=AjeebView())
+
+keep_alive()
+bot.run(os.getenv("DISCORD_TOKEN"))
