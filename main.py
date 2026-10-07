@@ -14,7 +14,8 @@ bot = discord.ext.commands.Bot(command_prefix="/", intents=intents)
 
 @bot.event
 async def on_ready():
-    await bot.tree.sync()
+    for g in bot.guilds:
+        await bot.tree.sync(guild=g)
     print(f"READY {bot.user}")
 
 @bot.tree.command(name="help", description="help")
